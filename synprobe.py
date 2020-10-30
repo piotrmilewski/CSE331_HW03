@@ -5,15 +5,18 @@ from scapy.layers.inet import *
 def checkPort(ip, port):
     srcPort = RandShort()
     pack = IP(dst=ip) / TCP(sport=srcPort, dport=port, flags="S")
-    resp = sr1(pack, verbose=0, timeout=2)
-    if resp is None:
-        return False
-    print(hexdump(resp))
-    flag = resp.getlayer(TCP).flags
-    if flag == 0x12:
-        return True
-    else:
-        return False
+    ans, unans = sr(pack, verbose=0, timeout=2)
+    print(ans.hexdump())
+    #resp = sr1(pack, verbose=0, timeout=2)
+    #print(resp.show())
+    #if resp is None:
+    #    return False
+    #print(hexdump(resp))
+    #flag = resp.getlayer(TCP).flags
+    #if flag == 0x12:
+    #    return True
+    #else:
+    #    return False
 
 
 def main(argv):
