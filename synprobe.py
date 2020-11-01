@@ -1,22 +1,71 @@
 from scapy.all import *
 from scapy.layers.inet import *
+from netaddr import IPNetwork
 
 
 def checkPort(ip, port):
     srcPort = RandShort()
     pack = IP(dst=ip) / TCP(sport=srcPort, dport=port, flags="S")
-    ans, unans = sr(pack, verbose=0, timeout=2)
-    print(ans.hexdump())
-    #resp = sr1(pack, verbose=0, timeout=2)
-    #print(resp.show())
-    #if resp is None:
-    #    return False
-    #print(hexdump(resp))
-    #flag = resp.getlayer(TCP).flags
-    #if flag == 0x12:
-    #    return True
-    #else:
-    #    return False
+    resp = sr1(pack, verbose=0, timeout=2)
+    # make sure response is received
+    if resp is None:
+        return False
+    # make sure response is TCP
+    if resp.getlayer(TCP) is None:
+        return False
+    flag = resp.getlayer(TCP).flags
+    if flag == 0x12:
+        return True
+    else:
+        return False
+
+
+def sendMsg(ip, port, msg, delayTime):
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.connect((ip, port))
+    try:
+        s.send(msg)
+        ready = select.select([s], [], [], delayTime)
+        if ready[0]:
+            data = s.recv(1024)
+            print("Output returned from " + ip + ":" + str(port))
+            hexdump(data)
+            return True
+        return False
+    except ConnectionResetError:
+        return False
+
+
+def printResp(ip, port):
+    # try a packet
+    if sendMsg(ip, port, b'GET /\r\n', 2):
+        return
+    # try another packet with a longer delay
+    if sendMsg(ip, port, b'GET /\r\n', 6):
+        return
+
+
+def checkIP(ip, ports):
+    # check if the target is valid
+    try:
+        resp = sr1(IP(dst=ip) / ICMP(), verbose=0, timeout=2)
+        if resp is None:
+            print(ip + " is not running")
+            return
+    except Scapy_Exception:
+        print(ip + " is not running")
+        return
+
+    openPorts = []
+    # check each specified port
+    for port in ports:
+        ret = checkPort(ip, port)
+        if ret:
+            openPorts.append(port)
+
+    # connect to port and dump hex
+    for port in openPorts:
+        printResp(ip, port)
 
 
 def main(argv):
@@ -52,22 +101,12 @@ def main(argv):
     else:
         ports = [20, 80, 443, 21, 22]
 
-    # check if the target is valid
-    try:
-        resp = sr1(IP(dst=ip) / ICMP(), verbose=0, timeout=2)
-        if resp is None:
-            print("Provided ip is not running")
-            sys.exit(1)
-    except Scapy_Exception:
-        print("Provided ip is not running")
-        sys.exit(1)
-
-    openPorts = []
-    # check each specified port
-    for port in ports:
-        ret = checkPort(ip, port)
-        if ret:
-            openPorts.append(port)
+    # check if requesting subnet
+    if "/" in ip:
+        for ip in IPNetwork(ip):
+            checkIP(str(ip), ports)
+    else:
+        checkIP(ip, ports)
 
 
 if __name__ == '__main__':
