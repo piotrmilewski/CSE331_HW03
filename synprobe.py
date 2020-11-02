@@ -30,6 +30,7 @@ def sendMsg(ip, port, msg, delayTime):
             data = s.recv(1024)
             print("Output returned from " + ip + ":" + str(port))
             hexdump(data)
+            print()
             return True
         return False
     except ConnectionResetError:
@@ -62,6 +63,17 @@ def checkIP(ip, ports):
         ret = checkPort(ip, port)
         if ret:
             openPorts.append(port)
+
+    if len(openPorts) > 0:
+        print()
+        print("Scan report for address: " + ip)
+        print("PORT: STATE")
+        for port in ports:
+            if port in openPorts:
+                print(str(port) + ": open")
+            else:
+                print(str(port) + ": closed")
+        print()
 
     # connect to port and dump hex
     for port in openPorts:
