@@ -103,7 +103,10 @@ def main(argv):
 
     if "-" in pOpt:
         split = pOpt.split('-')
-        ports = range(int(split[0]), int(split[1]))
+        if split[0] > split[1]:
+            ports = range(int(split[1]), int(split[0]))
+        else:
+            ports = range(int(split[0]), int(split[1]))
     elif "," in pOpt:
         ports = pOpt.split(',')
         for i in range(0, len(ports)):
